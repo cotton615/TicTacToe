@@ -81,7 +81,7 @@ std::pair<int, int> user_coordinate(std::pair<int, int>size) {
 
         indices.first = std::toupper(column) - 'A';
         indices.second -= 1;
-        // если координата не выходит за пределы доски - создать пару индексов
+
         if (indices.first >= 0 && indices.first < size.second && indices.second >= 0 && indices.second < size.first) { 
             return std::make_pair(indices.second, indices.first);
         }
