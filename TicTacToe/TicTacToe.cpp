@@ -2,18 +2,14 @@
 #include <string>
 #include <cstdlib>
 
-bool win_check(char** arr, const char symbol, const int rows, const int cols) {
+bool win_check(char** arr, const char symbol, const std::pair<int, int>size) {
     bool win = false;
-    bool draw = true;
 
-    for (int i = 0; i < rows; i++) {                // вертикальная проверка 
+    for (int i = 0; i < size.first; i++) {                // вертикальная проверка 
         bool row_win = true;
-        for (int j = 0; j < cols; j++) {
+        for (int j = 0; j < size.second; j++) {
             if (arr[i][j] != symbol) {
-                row_win = false;                                                                 
-            }
-            if (arr[i][j] == '-') {                 // если все ячейки пустые - не ничья
-                draw = false;
+                row_win = false;
             }
         }                                                                   
         if (row_win) {
@@ -21,9 +17,9 @@ bool win_check(char** arr, const char symbol, const int rows, const int cols) {
         }
     }
 
-    for (int j = 0; j < cols; j++) {                // горизонтальная проверка
+    for (int j = 0; j < size.second; j++) {                // горизонтальная проверка
         bool col_win = true;
-        for (int i = 0; i < rows; i++) {
+        for (int i = 0; i < size.first; i++) {
             if (arr[i][j] != symbol) {
                 col_win = false;
             }
@@ -34,7 +30,7 @@ bool win_check(char** arr, const char symbol, const int rows, const int cols) {
     }
 
     bool first_diagonal_win = true;
-    for (int i = 0; i < rows; i++) {                // проверка на диагональ слева направо 
+    for (int i = 0; i < size.first; i++) {                // проверка на диагональ слева направо 
         if (arr[i][i] != symbol) {
             first_diagonal_win = false;
         }
@@ -43,8 +39,8 @@ bool win_check(char** arr, const char symbol, const int rows, const int cols) {
         win = true;
     }
     bool second_diagonal_win = true;
-    for (int i = 0; i < rows; i++) {
-        if (arr[i][cols - 1 - i] != symbol) {               // проверка на диагональ справа налево
+    for (int i = 0; i < size.first; i++) {
+        if (arr[i][size.second - 1 - i] != symbol) {               // проверка на диагональ справа налево
             second_diagonal_win = false;
         }
     }
@@ -56,89 +52,71 @@ bool win_check(char** arr, const char symbol, const int rows, const int cols) {
         std::cout << "Player " << symbol << " won!" << std::endl;
         return true;
     }
-    if (draw) {
-        std::cout << "DRAW!" << std::endl;
-        return true;
-    }
     return false;
 }
 // вставляет символ игрока на данную координату
-void insert_symbol(std::pair<int, int>indices, char symbol, char** board) {
+void insert_symbol(std::pair<int, int>indices, char symbol, char** board, int& step) {
     if (board[indices.first][indices.second] != '-') {
         std::cout << "This coordinate is already taken!" << std::endl;
     }
     else {
         board[indices.first][indices.second] = symbol;
+        step += 1;
     }
 }
 
-// переводит координату в индекс двумерного массива
-std::pair<int, int> index_of_coordinate(const std::string& coordinate, const int rows, const int cols) {
-    int col_index = std::toupper(coordinate[0]) - 'A';
-    int row_index = std::stoi(coordinate.substr(1)) - 1;
-
-    if (row_index < 0 || row_index >= rows || col_index < 0 || col_index >= cols) {
-        throw std::out_of_range("Coordinate is out of board.");
-    }
-    else {
-        return std::make_pair(row_index, col_index);
-    }
-}
 // принимает от пользователя координату
-std::string user_coordinate(int rows, int cols) {
+std::pair<int, int> user_coordinate(std::pair<int, int>size) {
+    std::pair<int, int> indices;
+    char column;
+
+    std::cout << "Enter coordinate in format (A 1): ";
     while (true) {
-        std::string coordinate;
-        std::cout << "Enter coordinate: ";
-        std::cin >> coordinate;
-        if (coordinate.length() >= 2 && std::isalpha(coordinate[0]) && std::isdigit(coordinate[1])) {
-            try {
-                std::pair<int, int> indices = index_of_coordinate(coordinate, rows, cols);
-                return coordinate;
-            }
-            catch (const std::out_of_range e) {
-                std::cout << e.what() << std::endl;
-            }
+        if (!(std::cin >> column >> indices.second)) {
+            std::cout << "Invalid input." << std::endl;
+            std::cin.clear();
+            std::cin.ignore(1000, '\n');
+            continue;
+        }
+
+        indices.first = std::toupper(column) - 'A';
+        indices.second -= 1;
+        // если координата не выходит за пределы доски - создать пару индексов
+        if (indices.first >= 0 && indices.first < size.second && indices.second >= 0 && indices.second < size.first) { 
+            return std::make_pair(indices.second, indices.first);
         }
         else {
-            std::cout << "Type in format: (A1): ";
-
+            std::cout << "Coordinate is out of board." << std::endl;
+            continue;
         }
     }
 }
 
 // принимает от пользователя символ игрока
-char user_symbol() {
-    std::string symbol;
-    std::cout << "Enter symbol for the player: ";
-    std::cin >> symbol;
-    if (symbol.length() == 1) {
-        return symbol[0];
-    }
-    else {
-        std::cout << "Please enter only ONE character." << std::endl;
-        return user_symbol();
-    }
-}
-// проверяет rows и cols на то, являются ли они int
-bool is_integer(const std::string& input) {
-    if (input.empty()) return false;
-
-    for (int i = 0; i < input.length(); i++) {
-        if (!std::isdigit(input[i])) {
-            return false;
+std::pair<char, char> user_symbol(int step) {
+    std::pair<char, char> user_names;
+    for (int i = 0; i < 2; i++) {
+        std::cout << "Enter symbol for " << i+1 << " player :" << std::endl;
+        char symbol;
+        std::cin >> symbol;
+        if (i == 0) {
+            user_names.first = symbol;
+        }
+        else {
+            user_names.second = symbol;
         }
     }
-    return true;
+    return user_names;  
 }
 // создаёт двумерный массив
-char** create_arr(const int rows, const int cols) {
-    char** arr = new char* [rows]; // аллоцирует память
-    for (int i = 0; i < rows; i++) {
-        arr[i] = new char[cols];
+char** create_arr(const std::pair<int, int> size) {
+    char** arr = new char* [size.first]; // аллоцирует память
+    for (int i = 0; i < size.first; i++) {
+        arr[i] = new char[size.second];
     }
 
-    for (int i = 0; i < rows; i++) { // наполняет массив символом -
-        for (int j = 0; j < cols; j++) {
+    for (int i = 0; i < size.first; i++) { // наполняет массив символом -
+        for (int j = 0; j < size.second; j++) {
             arr[i][j] = '-';
         }
     }
@@ -165,56 +143,53 @@ void delete_arr(char** arr, const int rows) {
     }
     delete[] arr;
 }
-// решает какой символ игрока ставить, а также ведёт игру
-void players_turn(char** arr, const int rows, const int cols, std::pair<char, char>symbols, int step) {
-    char symbol;
-    if (step % 2 == 0) {
-        symbol = symbols.first;
-        std::cout << "Now it's " << symbol << " turn!" << std::endl;
-        insert_symbol(index_of_coordinate(user_coordinate(rows, cols), rows, cols), symbol, arr);
-        display_board(arr, rows, cols);
-    }
-    else {
-        symbol = symbols.second;
-        std::cout << "Now it's " << symbol << " turn!" << std::endl;
-        insert_symbol(index_of_coordinate(user_coordinate(rows, cols), rows, cols), symbol, arr);
-        display_board(arr, rows, cols);
-    }
-}
+
 
 int main() {
-    std::string rows_str, cols_str;
-    std::cout << "enter rows: ";
-    std::cin >> rows_str;
-    std::cout << "enter columns: ";
-    std::cin >> cols_str;
-    int rows = std::stoi(rows_str);
-    int cols = std::stoi(cols_str);
-    char** arr = create_arr(rows, cols);
-    std::pair<char, char> symbols(user_symbol(), user_symbol());
-    if (symbols.first == symbols.second) {
-        std::cout << "Player characters must be different!." << std::endl;
-    }
+    int rows, cols;
+    std::pair<int, int> size;
     int step = 0;
-    display_board(arr, rows, cols);
+    std::cout << "enter rows, columns (r c): ";
     while (true) {
-        if (is_integer(rows_str) && is_integer(cols_str)) {
-            char current_symbol;
-            if (step % 2 == 0) {                // выбирает символ для текущего хода
-                current_symbol = symbols.first;
-            }
-            else {
-                current_symbol = symbols.second;
-            }
-            players_turn(arr, rows, cols, symbols, step);
-            if (win_check(arr, current_symbol, rows, cols)) {               // если текущий символ побеждает удаляет доску и завершает игру
-                delete_arr(arr, rows);
-                break;
-            }
-            step += 1;
+        if (!(std::cin >> rows >> cols)) {
+            std::cout << "You must enter two digits. Enter again: " << std::endl;
+            std::cin.clear();
+            std::cin.ignore(1000, '\n');
+            continue;
         }
         else {
-            std::cout << "you must enter only int" << std::endl;
+            size = std::make_pair(rows, cols);
+            break;
+        }
+    }
+    char** arr = create_arr(size);
+    std::pair<char, char> symbols(user_symbol(step));
+    while (symbols.first == symbols.second) {
+        std::cout << "Player characters must be different!." << std::endl;
+        std::cin.clear();
+        std::cin.ignore(1000, '\n');
+        symbols = user_symbol(step);
+    }
+
+    while (true) {
+        display_board(arr, size.first, size.second);
+        char current_symbol;
+        if (step % 2 == 0) {                // выбирает символ для текущего хода
+            current_symbol = symbols.first;
+        }
+        else {
+            current_symbol = symbols.second;
+        }
+        std::cout << "Now it's " << current_symbol << " turn!" << std::endl;
+        insert_symbol(user_coordinate(size), current_symbol, arr, step);
+
+        if (win_check(arr, current_symbol, size)) {               // если текущий символ побеждает удаляет доску и завершает игру
+            delete_arr(arr, rows);
+            break;
+        } 
+        else if ((size.first*size.second) == step+1) {
+            std::cout << "DRAW!" << std::endl;
+            break;
         }
     }
 }
